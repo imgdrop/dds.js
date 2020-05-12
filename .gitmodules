@@ -1,0 +1,3 @@
+[submodule "encode/stb"]
+	path = encode/stb
+	url = https://github.com/nothings/stb.git
