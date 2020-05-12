@@ -1,0 +1,10 @@
+{
+   "compilerOptions": {
+      "strict": true,
+      "target": "ESNext",
+      "lib": ["ES6", "DOM"],
+      "outDir": "bin",
+      "declaration": true,
+      "sourceMap": true
+   }
+}

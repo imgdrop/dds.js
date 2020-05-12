@@ -1,0 +1,65 @@
+{
+   "name": "@imgdrop/dds",
+   "version": "1.0.0",
+   "license": "MIT",
+   "main": "./bin",
+   "files": [
+      "bin"
+   ],
+   "devDependencies": {
+      "@typescript-eslint/eslint-plugin": "2.31.0",
+      "@typescript-eslint/parser": "2.31.0",
+      "eslint": "6.8.0",
+      "eslint-config-airbnb-typescript": "7.2.1",
+      "eslint-config-prettier": "6.11.0",
+      "eslint-plugin-import": "2.20.2",
+      "npm-run-all": "4.1.5",
+      "prettier": "2.0.5",
+      "typescript": "3.8.3"
+   },
+   "scripts": {
+      "build": "tsc",
+      "lint": "run-s lint:*",
+      "lint:eslint": "eslint \"**/*.ts\" --max-warnings 0",
+      "lint:prettier": "prettier \"**/*.{ts,js,json,yml,md}\" -c",
+      "fix": "run-s fix:*",
+      "fix:eslint": "yarn lint:eslint --fix",
+      "fix:prettier": "yarn lint:prettier --write"
+   },
+   "eslintConfig": {
+      "ignorePatterns": [
+         "**/*.js",
+         "bin/**"
+      ],
+      "extends": [
+         "airbnb-typescript/base",
+         "plugin:@typescript-eslint/eslint-recommended",
+         "plugin:@typescript-eslint/recommended",
+         "plugin:@typescript-eslint/recommended-requiring-type-checking",
+         "prettier",
+         "prettier/@typescript-eslint"
+      ],
+      "parserOptions": {
+         "project": "./tsconfig.json"
+      },
+      "rules": {
+         "no-console": "off",
+         "no-bitwise": "off",
+         "prefer-destructuring": "off",
+         "import/prefer-default-export": "off"
+      }
+   },
+   "prettier": {
+      "tabWidth": 3,
+      "printWidth": 90,
+      "singleQuote": true,
+      "overrides": [
+         {
+            "files": "*.yml",
+            "options": {
+               "tabWidth": 2
+            }
+         }
+      ]
+   }
+}
