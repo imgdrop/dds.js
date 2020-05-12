@@ -1,0 +1,15 @@
+{
+   "version": "0.2.0",
+   "configurations": [
+      {
+         "name": "Debug Encoder",
+         "type": "cppdbg",
+         "request": "launch",
+         "MIMode": "gdb",
+         "program": "${workspaceFolder}/encode/dds-enc",
+         "cwd": "${workspaceFolder}/encode",
+         "args": ["dice.png", "dxt3", "dice.dds"],
+         "preLaunchTask": "Build Encoder"
+      }
+   ]
+}

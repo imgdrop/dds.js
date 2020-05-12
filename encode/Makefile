@@ -1,4 +1,4 @@
-ENC_CFLAGS = dds-enc.c -o dds-enc -std=c99 -Wall -Wextra -Wpedantic $(CFLAGS)
+ENC_CFLAGS = dds-enc.c -o dds-enc -lm -std=c99 -Wall -Wextra -Wpedantic $(CFLAGS)
 
 all: debug
 
