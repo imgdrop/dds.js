@@ -3,21 +3,44 @@ function getFourCCName(fourcc: number): string {
    return String.fromCharCode(...Array.from(codes));
 }
 
-function applyMask(value: number, mask: number): number {
-   if (mask === 0) {
-      return 0;
-   }
+function getColorShades(color0: number, color1: number): number[] {
+   return [
+      color0,
+      color1,
+      (2 * color0 + color1) / 3,
+      (color0 + 2 * color1) / 3
+   ];
+}
 
-   let m = mask;
-   let v = value & m;
-   for (; !(m & 1); m >>>= 1) {
-      v >>>= 1;
+function decodeBC1(chunk: Uint8Array, block: Uint8Array): void {
+   const color0 = chunk[0] | (chunk[1] << 8);
+   const color1 = chunk[2] | (chunk[3] << 8);
+   const red = getColorShades((color0 >>> 11) * 0xFF / 0x1F, (color1 >>> 11) * 0xFF / 0x1F);
+   const green = getColorShades(((color0 >>> 5) & 0x3F) * 0xFF / 0x3F, ((color1 >>> 5) & 0x3F) * 0xFF / 0x3F);
+   const blue = getColorShades((color0 & 0x1F) * 0xFF / 0x1F, (color1 & 0x1F) * 0xFF / 0x1F);
+
+   const setValue = (index: number, byte: number, shift: number): void => {
+      const bits = (chunk[byte] >>> shift) & 0x3;
+      block[index * 4 + 0] = red[bits];
+      block[index * 4 + 1] = green[bits];
+      block[index * 4 + 2] = blue[bits];
    }
-   let d = 1;
-   for (; m & 1; m >>>= 1) {
-      d <<= 1;
-   }
-   return (v * 0xff) / (d - 1);
+   setValue(0, 4, 0);
+   setValue(1, 4, 2);
+   setValue(2, 4, 4);
+   setValue(3, 4, 6);
+   setValue(4, 5, 0);
+   setValue(5, 5, 2);
+   setValue(6, 5, 4);
+   setValue(7, 5, 6);
+   setValue(8, 6, 0);
+   setValue(9, 6, 2);
+   setValue(10, 6, 4);
+   setValue(11, 6, 6);
+   setValue(12, 7, 0);
+   setValue(13, 7, 2);
+   setValue(14, 7, 4);
+   setValue(15, 7, 6);
 }
 
 export class DDSDecoder {
@@ -28,6 +51,10 @@ export class DDSDecoder {
    public width = 0;
 
    public height = 0;
+
+   private get blockCount(): number {
+      return Math.ceil(this.width / 4) * Math.ceil(this.height / 4);
+   }
 
    constructor(private reader: (size: number) => ArrayBuffer) {}
 
@@ -54,55 +81,38 @@ export class DDSDecoder {
 
    private readInt32(size: number): Int32Array {
       const output = this.readUint8(size << 2);
-      return new Int32Array(output, output.byteOffset, size);
+      return new Int32Array(output.buffer, output.byteOffset, size);
    }
 
-   private decodeRaw(header: Int32Array): void {
-      const bitCount = header[21];
-      const rmask = header[22];
-      const gmask = header[23];
-      const bmask = header[24];
-      let amask = 0;
-      if (header[19] & 0x1) {
-         amask = header[25];
-      }
-
-      const stride = Math.ceil((this.width * bitCount) / 8);
-      let padding = 0;
-      if (header[1] & 0x8) {
-         padding = header[4] - stride;
-      }
-
-      for (let y = 0; y < this.height; y += 1) {
-         if (y > 0 && padding > 0) {
-            this.readUint8(padding);
-         }
-
-         let buffer = this.readInt32(1)[0];
-         let bits = 32;
-         for (let x = 0; x < this.width; x += 1) {
-            let value = buffer;
-            if (bits < bitCount) {
-               buffer = this.readInt32(1)[0];
-               value |= buffer << bits;
-               buffer >>>= bitCount - bits;
-               bits += 32 - bitCount;
-            } else {
-               buffer >>>= bitCount;
-               bits -= bitCount;
+   private decodeChunks(getBlock: (index: number, block: Uint8Array) => void): void {
+      const block = new Uint8Array(64);
+      let index = 0;
+      for (let y = 0; y < this.height; y += 4) {
+         for (let x = 0; x < this.width; x += 4) {
+            getBlock(index, block);
+            for (let by = 0; by < 4; by += 1) {
+               for (let bx = 0; bx < 4; bx += 1) {
+                  const bi = ((by * 4) + bx) * 4;
+                  const xx = Math.min(x + bx, this.width - 1);
+                  const yy = Math.min(y + by, this.height - 1);
+                  const i = ((yy * this.width) + xx) * 4;
+                  this.data.set(block.subarray(bi, bi + 4), i);
+               }
             }
-
-            const index = (y * this.width + x) * 4;
-            this.data[index + 0] = applyMask(value, rmask);
-            this.data[index + 1] = applyMask(value, gmask);
-            this.data[index + 2] = applyMask(value, bmask);
-            if (amask === 0) {
-               this.data[index + 3] = 0xff;
-            } else {
-               this.data[index + 3] = applyMask(value, amask);
-            }
+            index += 1;
          }
       }
+   }
+
+   private decodeDXT1(): void {
+      const blockSize = 8;
+      const chunks = this.readUint8(this.blockCount * blockSize);
+      this.decodeChunks((index, block) => {
+         decodeBC1(chunks.subarray(index * blockSize), block);
+         for (let i = 3; i < block.byteLength; i += 4) {
+            block[i] = 0xFF;
+         }
+      });
    }
 
    decode(): void {
@@ -110,7 +120,7 @@ export class DDSDecoder {
       if (magic[0] !== 0x20534444) {
          throw new Error('Invalid DDS magic');
       }
-      const header = this.readInt32(124);
+      const header = this.readInt32(31);
       if (header[0] !== 124) {
          throw new Error('Invalid header size');
       }
@@ -130,6 +140,8 @@ export class DDSDecoder {
       const fourcc = header[20];
       switch (fourcc) {
          case 0x31545844: // DXT1
+            this.decodeDXT1();
+            return;
          case 0x32545844: // DXT2
          case 0x33545844: // DXT3
          case 0x34545844: // DXT4

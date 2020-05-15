@@ -119,6 +119,12 @@ int main(int argc, char* argv[]) {
                block[bi + 2] = input[i + 2];
                block[bi + 3] = 0xFF;
                alpha[ai] = input[i + 3];
+               if (format == FORMAT_DXT2 || format == FORMAT_DXT4) {
+                  float am = (float)alpha[ai] / 0xFF;
+                  block[bi + 0] *= am;
+                  block[bi + 1] *= am;
+                  block[bi + 2] *= am;
+               }
             }
          }
 

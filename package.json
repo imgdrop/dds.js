@@ -46,6 +46,7 @@
          "no-console": "off",
          "no-bitwise": "off",
          "prefer-destructuring": "off",
+         "no-param-reassign": "off",
          "import/prefer-default-export": "off"
       }
    },
