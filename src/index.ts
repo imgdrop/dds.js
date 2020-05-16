@@ -4,27 +4,31 @@ function getFourCCName(fourcc: number): string {
 }
 
 function getColorShades(color0: number, color1: number): number[] {
-   return [
-      color0,
-      color1,
-      (2 * color0 + color1) / 3,
-      (color0 + 2 * color1) / 3
-   ];
+   return [color0, color1, (2 * color0 + color1) / 3, (color0 + 2 * color1) / 3];
 }
 
 function decodeBC1(chunk: Uint8Array, block: Uint8Array): void {
    const color0 = chunk[0] | (chunk[1] << 8);
    const color1 = chunk[2] | (chunk[3] << 8);
-   const red = getColorShades((color0 >>> 11) * 0xFF / 0x1F, (color1 >>> 11) * 0xFF / 0x1F);
-   const green = getColorShades(((color0 >>> 5) & 0x3F) * 0xFF / 0x3F, ((color1 >>> 5) & 0x3F) * 0xFF / 0x3F);
-   const blue = getColorShades((color0 & 0x1F) * 0xFF / 0x1F, (color1 & 0x1F) * 0xFF / 0x1F);
+   const red = getColorShades(
+      ((color0 >>> 11) * 0xff) / 0x1f,
+      ((color1 >>> 11) * 0xff) / 0x1f
+   );
+   const green = getColorShades(
+      (((color0 >>> 5) & 0x3f) * 0xff) / 0x3f,
+      (((color1 >>> 5) & 0x3f) * 0xff) / 0x3f
+   );
+   const blue = getColorShades(
+      ((color0 & 0x1f) * 0xff) / 0x1f,
+      ((color1 & 0x1f) * 0xff) / 0x1f
+   );
 
    const setValue = (index: number, byte: number, shift: number): void => {
       const bits = (chunk[byte] >>> shift) & 0x3;
       block[index * 4 + 0] = red[bits];
       block[index * 4 + 1] = green[bits];
       block[index * 4 + 2] = blue[bits];
-   }
+   };
    setValue(0, 4, 0);
    setValue(1, 4, 2);
    setValue(2, 4, 4);
@@ -54,7 +58,7 @@ function decodeBC4(chunk: Uint8Array, block: Uint8Array): void {
       (4 * alpha0 + 3 * alpha1) / 7,
       (3 * alpha0 + 4 * alpha1) / 7,
       (2 * alpha0 + 5 * alpha1) / 7,
-      (alpha0 + 6 * alpha1) / 7
+      (alpha0 + 6 * alpha1) / 7,
    ];
 
    const setValue = (index: number, byte: number, shift: number): void => {
@@ -62,10 +66,10 @@ function decodeBC4(chunk: Uint8Array, block: Uint8Array): void {
       if (shift === 6) {
          bits |= (chunk[byte + 1] & 0x1) << 2;
       } else if (shift === 7) {
-         bits |= (chunk[byte + 1] & 0x3) << 1; 
+         bits |= (chunk[byte + 1] & 0x3) << 1;
       }
       block[index * 4 + 3] = alpha[bits];
-   }
+   };
    setValue(0, 2, 0);
    setValue(1, 2, 3);
    setValue(2, 2, 6);
@@ -86,11 +90,11 @@ function decodeBC4(chunk: Uint8Array, block: Uint8Array): void {
 
 function unmultiplyAlpha(block: Uint8Array): void {
    for (let i = 0; i < 64; i += 4) {
-      const alpha = block[i + 3] / 0xFF;
+      const alpha = block[i + 3] / 0xff;
       if (alpha !== 0) {
-         block[i + 0] = Math.min(block[i + 0] / alpha, 0xFF);
-         block[i + 1] = Math.min(block[i + 1] / alpha, 0xFF);
-         block[i + 2] = Math.min(block[i + 2] / alpha, 0xFF);
+         block[i + 0] = Math.min(block[i + 0] / alpha, 0xff);
+         block[i + 1] = Math.min(block[i + 1] / alpha, 0xff);
+         block[i + 2] = Math.min(block[i + 2] / alpha, 0xff);
       }
    }
 }
@@ -144,10 +148,10 @@ export class DDSDecoder {
             getBlock(index, block);
             for (let by = 0; by < 4; by += 1) {
                for (let bx = 0; bx < 4; bx += 1) {
-                  const bi = ((by * 4) + bx) * 4;
+                  const bi = (by * 4 + bx) * 4;
                   const xx = Math.min(x + bx, this.width - 1);
                   const yy = Math.min(y + by, this.height - 1);
-                  const i = ((yy * this.width) + xx) * 4;
+                  const i = (yy * this.width + xx) * 4;
                   this.data.set(block.subarray(bi, bi + 4), i);
                }
             }
@@ -162,7 +166,7 @@ export class DDSDecoder {
       this.decodeChunks((index, block) => {
          decodeBC1(chunks.subarray(index * blockSize), block);
          for (let i = 3; i < block.byteLength; i += 4) {
-            block[i] = 0xFF;
+            block[i] = 0xff;
          }
       });
    }
@@ -173,7 +177,7 @@ export class DDSDecoder {
       this.decodeChunks((index, block) => {
          for (let i = 0; i < 8; i += 1) {
             const alpha = chunks[index * blockSize + i];
-            block[i * 8 + 3] = (alpha & 0xF) * 17;
+            block[i * 8 + 3] = (alpha & 0xf) * 17;
             block[i * 8 + 7] = (alpha >>> 4) * 17;
          }
          decodeBC1(chunks.subarray(index * blockSize + 8), block);

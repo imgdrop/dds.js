@@ -4,7 +4,7 @@
       {
          "label": "Build Encoder",
          "type": "shell",
-         "command": "make -C ${workspaceFolder}/encode",
+         "command": "make -C ${workspaceFolder}/encode"
       }
    ]
 }
