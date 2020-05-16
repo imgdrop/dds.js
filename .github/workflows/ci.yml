@@ -1,0 +1,65 @@
+name: CI
+on: push
+
+jobs:
+  install:
+    name: Install Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - run: yarn --frozen-lockfile
+      - uses: actions/cache@v1
+        with:
+          key: install-${{ github.sha }}
+          path: node_modules
+
+  build:
+    name: Build Library
+    runs-on: ubuntu-latest
+    needs:
+      - install
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - uses: actions/cache@v1
+        with:
+          key: install-${{ github.sha }}
+          path: node_modules
+      - run: yarn build
+      - uses: actions/cache@v1
+        with:
+          key: build-${{ github.sha }}
+          path: bin
+
+  lint:
+    name: Lint Files
+    runs-on: ubuntu-latest
+    needs:
+      - install
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - uses: actions/cache@v1
+        with:
+          key: install-${{ github.sha }}
+          path: node_modules
+      - run: yarn lint
+
+  publish:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - lint
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - uses: actions/cache@v1
+        with:
+          key: build-${{ github.sha }}
+          path: bin
+      - run: echo ${{ secrets.NPMRC }} > ~/.npmrc
+      - run: npm publish --access public
+        continue-on-error: true
